@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">@android:color/system_accent1_100</color>
+    <color name="ic_launcher_shadow">@android:color/system_accent1_400</color>
+    <color name="ic_launcher_stack_light">@android:color/system_accent1_300</color>
+    <color name="ic_launcher_stack_dark">@android:color/system_accent1_600</color>
+    <color name="ic_launcher_frame_light">@android:color/system_accent1_10</color>
+    <color name="ic_launcher_frame_dark">@android:color/system_accent1_200</color>
+    <color name="ic_launcher_photo">@android:color/system_accent1_300</color>
+    <color name="ic_launcher_sun">@android:color/system_accent1_50</color>
+    <color name="ic_launcher_mountains">@android:color/system_accent1_700</color>
+</resources>

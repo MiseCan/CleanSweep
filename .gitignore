@@ -42,3 +42,7 @@ google-services.json
 
 # Backup Files
 *.bck
+
+# Local packages, build mappings, and separately licensed model weights
+/artifacts/
+/app/src/main/assets/models/*.onnx

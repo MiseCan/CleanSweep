@@ -1,144 +1,99 @@
-/*
- * CleanSweep
- * Copyright (c) 2025 LoopOtto
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 package com.cleansweep.ui
 
 import android.app.Activity
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import android.os.Build
+import android.content.Context
+import android.content.IntentSender
+import android.content.res.Configuration
 import android.os.Bundle
-import android.util.TypedValue
+import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.*
-import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
-import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.core.os.LocaleListCompat
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.cleansweep.ui.theme.AppTheme
+import com.cleansweep.R
+import com.cleansweep.diagnostics.ErrorJournal
+import com.cleansweep.ui.navigation.AppNavigation
 import com.cleansweep.ui.theme.CleanSweepTheme
-import com.cleansweep.util.ProactiveIndexer
-import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.collectLatest
+import java.io.IOException
+import java.time.LocalDate
+import java.util.Locale
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import javax.inject.Inject
-import androidx.core.graphics.drawable.toDrawable
+import kotlinx.coroutines.withContext
 
-@AndroidEntryPoint
-class MainActivity : BaseActivity() {
+class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        val chinese = Configuration().apply { setLocale(Locale.SIMPLIFIED_CHINESE) }
+        super.attachBaseContext(newBase.createConfigurationContext(chinese))
+    }
 
-    @Inject
-    lateinit var proactiveIndexer: ProactiveIndexer
+    private val model: PhotoViewModel by viewModels()
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { model.refresh() }
+    private val removalLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result -> model.removalAnswered(result.resultCode == Activity.RESULT_OK) }
 
-    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
-    override fun onCreate(savedInstanceState: Bundle?) {
-        // Install the SplashScreen API before super.onCreate()
-        val splashScreen = installSplashScreen()
-
-        applyNoTransition()
-        super.onCreate(savedInstanceState)
-
-        // Hold the splash screen until the ViewModel has finished loading preferences (theme, locale).
-        // This ensures the first frame rendered after the splash is the correct theme.
-        splashScreen.setKeepOnScreenCondition { !mainViewModel.isReady.value }
-
-        // 1. Enable edge-to-edge drawing
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        // 2. Set the window background color instantly to prevent black flicker on recreation (e.g., language change).
-        // This resolves the window background before Compose initializes.
-        window.setWindowAnimations(0)
-        applyImmediateBackgroundColor()
-
-        // Observe locale changes from the preference repository (via MainViewModel) and apply them to the system using AppCompatDelegate.
-        lifecycleScope.launch {
-            mainViewModel.appLocale.collectLatest { locale ->
-                val appLocales = if (locale.tag != null) {
-                    LocaleListCompat.forLanguageTags(locale.tag)
-                } else {
-                    LocaleListCompat.getEmptyLocaleList()
+    private val exportLogLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri ->
+        if (uri != null) lifecycleScope.launch {
+            val message = try {
+                withContext(Dispatchers.IO) {
+                    val output = contentResolver.openOutputStream(uri, "wt")
+                        ?: throw IOException("Unable to open export file")
+                    output.use(ErrorJournal::export)
                 }
-
-                // Strictly check if the new locale list is different from the current configuration
-                // to prevent redundant activity recreations.
-                val currentLocales = AppCompatDelegate.getApplicationLocales()
-                if (currentLocales.toLanguageTags() != appLocales.toLanguageTags()) {
-                    AppCompatDelegate.setApplicationLocales(appLocales)
-                }
+                R.string.export_error_log_done
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                ErrorJournal.warn("Could not export diagnostics", error)
+                R.string.export_error_log_failed
             }
+            Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
         }
+    }
 
-        // Schedule the proactive indexing job on app startup.
-        // WorkManager's unique work policy will prevent redundant runs.
-        proactiveIndexer.scheduleGlobalIndex()
+    override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
         setContent {
-            val currentTheme by mainViewModel.currentTheme.collectAsStateWithLifecycle()
-            val useDynamicColors by mainViewModel.useDynamicColors.collectAsStateWithLifecycle()
-            val accentColorKey by mainViewModel.accentColorKey.collectAsStateWithLifecycle()
-            val windowSizeClass = calculateWindowSizeClass(this)
-
-            CleanSweepTheme(
-                theme = currentTheme,
-                useDynamicColors = useDynamicColors,
-                accentColorKey = accentColorKey
-            ) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    MainApp(viewModel = mainViewModel, windowSizeClass = windowSizeClass)
+            val state by model.state.collectAsStateWithLifecycle()
+            state.permissionRequest?.let { request ->
+                LaunchedEffect(request) {
+                    try {
+                        removalLauncher.launch(request)
+                    } catch (error: IntentSender.SendIntentException) {
+                        ErrorJournal.warn("Could not launch the photo removal request", error)
+                        model.removalAnswered(false)
+                    } catch (error: IllegalStateException) {
+                        ErrorJournal.warn("Removal request launcher unavailable", error)
+                        model.removalAnswered(false)
+                    }
+                    model.requestLaunched()
                 }
             }
-        }
-    }
-
-    private fun applyImmediateBackgroundColor() {
-        val isAmoled = mainViewModel.currentTheme.value == AppTheme.AMOLED
-        val color = if (isAmoled) {
-            Color.BLACK
-        } else {
-            val a = TypedValue()
-            theme.resolveAttribute(android.R.attr.colorBackground, a, true)
-            if (a.type >= TypedValue.TYPE_FIRST_COLOR_INT && a.type <= TypedValue.TYPE_LAST_COLOR_INT) {
-                a.data
-            } else {
-                Color.BLACK
+            CleanSweepTheme {
+                AppNavigation(state, model, onExportErrorLog = {
+                    exportLogLauncher.launch("CleanSweep-errors-${LocalDate.now()}.txt")
+                }) { permissionLauncher.launch(model.permissions) }
             }
         }
-
-        window.setBackgroundDrawable(color.toDrawable())
-        window.decorView.setBackgroundColor(color)
     }
 
-    private fun applyNoTransition() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, 0, 0)
-            overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, 0, 0)
-        } else {
-            @Suppress("DEPRECATION")
-            overridePendingTransition(0, 0)
-        }
+    override fun onResume() {
+        super.onResume()
+        model.refresh()
     }
 }

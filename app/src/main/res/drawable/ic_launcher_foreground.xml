@@ -1,0 +1,38 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:pivotX="54" android:pivotY="54" android:scaleX="0.78" android:scaleY="0.78">
+        <path
+            android:fillColor="@color/ic_launcher_shadow"
+            android:fillAlpha="0.38"
+            android:pathData="M32,39 L72,33 Q79,32 81,39 L86,69 Q87,76 80,78 L70,83 L34,87 Q27,88 26,81 L22,48 Q21,41 32,39Z" />
+        <path android:pathData="M34,31 L67,23 C72,22 76,24 77,29 L84,58 C85,63 83,67 78,68 L47,76 C42,77 38,75 37,70 L29,41 C28,36 30,32 34,31Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:startX="36" android:startY="25"
+                    android:endX="75" android:endY="77"
+                    android:startColor="@color/ic_launcher_stack_light" android:endColor="@color/ic_launcher_stack_dark" />
+            </aapt:attr>
+        </path>
+        <path android:pathData="M32,37 H67 C72,37 76,41 76,46 V72 C76,77 72,81 67,81 H32 C27,81 23,77 23,72 V46 C23,41 27,37 32,37Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:startX="35" android:startY="36"
+                    android:endX="67" android:endY="82"
+                    android:startColor="@color/ic_launcher_frame_light" android:endColor="@color/ic_launcher_frame_dark" />
+            </aapt:attr>
+        </path>
+        <path
+            android:fillColor="@color/ic_launcher_photo"
+            android:pathData="M35,44 H64 Q69,44 69,49 V69 Q69,74 64,74 H35 Q30,74 30,69 V49 Q30,44 35,44Z" />
+        <path
+            android:fillColor="@color/ic_launcher_sun"
+            android:pathData="M61,49 A4,4 0,1 1,53 49 A4,4 0,0 1,61 49Z" />
+        <path
+            android:fillColor="@color/ic_launcher_mountains"
+            android:pathData="M30,67 L41,55 Q43,53 45,56 L52,64 L57,59 Q59,57 61,59 L69,67 V69 Q69,74 64,74 H35 Q30,74 30,69Z" />
+    </group>
+</vector>
